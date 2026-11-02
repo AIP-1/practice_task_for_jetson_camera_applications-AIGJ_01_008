@@ -18,6 +18,8 @@ def body(k):
 
 def facing_score(k):
     """1에 가까울수록 카메라 정면. 코·두 눈이 보이고 코가 두 귀(없으면 두 눈) 가운데 있으면 정면"""
+    if k[LS, 2] > KP_CONF and k[RS, 2] > KP_CONF and k[LS, 0] < k[RS, 0]:
+        return 0.0      # 뒷모습: 왼쪽 어깨가 화면 왼쪽에 보임. 안 보이는 코·눈이 추정되어 정면처럼 계산되는 것을 막는다
     if k[NOSE, 2] < KP_CONF or k[EYE_L, 2] < KP_CONF or k[EYE_R, 2] < KP_CONF:
         return 0.0
     if k[EAR_L, 2] > KP_CONF and k[EAR_R, 2] > KP_CONF:
