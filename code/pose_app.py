@@ -29,6 +29,7 @@ ap.add_argument("--mqtt-host", default=None, help="MQTT 브로커 주소. 없으
 ap.add_argument("--mqtt-port", type=int, default=1883)
 ap.add_argument("--topic", default="aiot/kiosk/lab1", help="발행 토픽 앞부분 (/event, /status, /summary)")
 ap.add_argument("--stats-log", default=None, help="예: runs/pose_stats.csv")
+ap.add_argument("--watchdog", type=float, default=120.0, help="이 초 동안 프레임이 없으면 프로세스 종료 (systemd가 다시 띄움). 0이면 끔")
 args = ap.parse_args()
 MODE = "raw" if args.raw else "smooth"
 FILE = args.src != "rtsp" and not args.src.isdigit()   # 영상 파일로 같은 장면을 반복 비교
@@ -298,6 +299,9 @@ def status_loop():
         publish("status", row, retain=True)
         if rec_w:
             rec_w.writerow(list(row.values())); rec_f.flush()
+        if args.watchdog and age > args.watchdog:     # 읽기 호출이 멈추면 스레드로는 풀 수 없어 프로세스째 다시 시작
+            print(f"프레임이 {age:.0f}초 동안 없음. 종료 후 재시작", flush=True)
+            os._exit(1)
         if now - t_sum >= 900:
             with ev_lock:
                 cur = counts + beh_counts
@@ -322,11 +326,10 @@ class LatestFrame(threading.Thread):
     처음에 못 열거나 도중에 끊기면 몇 초마다 다시 연결을 시도한다."""
     def __init__(self):
         super().__init__(daemon=True)
-        self.cap, self.lock, self.frame, self.seq = None, threading.Lock(), None, 0
+        self.cap, self.lock, self.frame, self.seq, self.t_ok = None, threading.Lock(), None, 0, 0.0
 
     def run(self):
         global CAM_IP
-        fails = 0
         while True:
             if self.cap is None:
                 self.cap = open_camera()
@@ -336,17 +339,17 @@ class LatestFrame(threading.Thread):
                         CAM_IP = find_cam_ip() or CAM_IP
                     time.sleep(3)
                     continue
+                self.t_ok = time.time()
             ok, f = self.cap.read()
             if not ok:
-                fails += 1
-                if fails > 50:                    # 약 2.5초 동안 못 읽으면 재연결
+                if time.time() - self.t_ok > 2.5:  # 실패 한 번이 30초씩 걸릴 수 있어 횟수가 아니라 시간으로 판단
                     print("카메라 재연결 중...")
                     stats["reconnects"] = stats.get("reconnects", 0) + 1
                     self.cap.release()
-                    self.cap, fails = None, 0
+                    self.cap = None
                 time.sleep(0.05)
                 continue
-            fails = 0
+            self.t_ok = time.time()
             with self.lock:
                 self.frame, self.seq = f, self.seq + 1
 
