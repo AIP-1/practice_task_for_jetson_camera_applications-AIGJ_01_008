@@ -19,7 +19,7 @@
     REST   http://<젯슨>:8090/occupancy   현재 값
            http://<젯슨>:8090/health      카메라 상태·재연결 횟수·자원
     기록   logs/service_YYYYMMDD.jsonl   1분마다 값·상태·CPU·메모리·GPU
-           logs/events.jsonl             시작·끊김·복구·종료
+           logs/events.jsonl             시작·끊김·복구·프레임 지연(camera_stale, camera_fresh)·종료
 """
 import argparse
 import glob
@@ -138,6 +138,14 @@ class Camera(threading.Thread):
         with self.lock:
             return self.frame, self.t_frame
 
+    def state_now(self, stale):
+        """랜선이 빠지면 읽기가 실패 없이 멈추므로 마지막 프레임 시각도 함께 본다"""
+        with self.lock:
+            age = time.time() - self.t_frame
+        if self.status == "정상" and age > stale:
+            return "끊김(프레임 없음)"
+        return self.status
+
 
 # ------------------------------------------------------------------ 자원
 class Res:
@@ -195,7 +203,7 @@ def main():
         name, spec = c.split("=", 1)
         cams.append(Camera(name, spec))
     hist = {c.name: deque() for c in cams}
-    state = {c.name: {"count": None, "raw": None, "age_s": None} for c in cams}
+    state = {c.name: {"count": None, "raw": None, "age_s": None, "stale": False} for c in cams}
     infer_ms = deque(maxlen=300)
 
     from ultralytics import YOLO
@@ -254,7 +262,7 @@ def main():
             s = state[c.name]
             out[c.name] = {"ts": now_iso(), "space": c.name, "count": s["count"], "raw": s["raw"],
                            "unit": "명", "window_s": args.window, "stat": args.stat,
-                           "age_s": s["age_s"], "camera": c.status, "reconnects": c.reconnects}
+                           "age_s": s["age_s"], "camera": c.state_now(args.stale), "reconnects": c.reconnects}
         return out
 
     class H(BaseHTTPRequestHandler):
@@ -273,7 +281,7 @@ def main():
                 self._json(snapshot())
             elif self.path.startswith("/health"):
                 self._json({"uptime_s": round(time.time() - T0), "mqtt_connected": mq.is_connected(),
-                            "cams": {c.name: {"status": c.status, "reconnects": c.reconnects,
+                            "cams": {c.name: {"status": c.state_now(args.stale), "reconnects": c.reconnects,
                                               "frames": c.n} for c in cams},
                             "infer_ms_avg": round(statistics.mean(infer_ms), 1) if infer_ms else None,
                             "saved_images": 0, **res.read()})
@@ -296,7 +304,13 @@ def main():
             s = state[c.name]
             if f is None or t_loop - tf > args.stale:
                 s["age_s"] = None if f is None else round(t_loop - tf, 1)
+                if f is not None and not s["stale"]:
+                    s["stale"] = True
+                    event("camera_stale", cam=c.name, age_s=s["age_s"])
                 continue
+            if s["stale"]:
+                s["stale"] = False
+                event("camera_fresh", cam=c.name)
             t1 = time.time()
             r = model.predict(f, classes=[0], conf=args.conf, imgsz=args.imgsz, verbose=False)[0]
             infer_ms.append((time.time() - t1) * 1000)
