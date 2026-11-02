@@ -1,0 +1,17 @@
+[Unit]
+Description=카메라 과제 6 재실 인원 서비스 v1
+After=network-online.target mosquitto.service
+Wants=network-online.target
+
+[Service]
+User=team2-2
+WorkingDirectory=/home/team2-2/eg2-lab/occupancy
+# CAM_PW, VIGI_IP 를 담은 파일 (chmod 600). 비밀번호를 이 유닛 파일에 직접 쓰지 않는다
+EnvironmentFile=/home/team2-2/.config/occupancy.env
+ExecStart=/home/team2-2/eg2/bin/python /home/team2-2/eg2-lab/occupancy/occupancy_service.py \
+  --cam lab1=vigi --port 8095 --tegrastats
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target

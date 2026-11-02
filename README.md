@@ -13,8 +13,10 @@ AIGJ_01_008 박민수. **이 과제는 진행 중이다.** 결과와 확인 문�
 
 | 파일 | 내용 |
 | --- | --- |
-| `code/pose_app.py` | 행동 패턴 서비스 (MQTT 발행, 가동 기록) |
+| `code/occupancy_service.py` | 재실 인원 서비스 (A1) |
+| `code/cam1.py` | 카메라 연동 측정 도구 (과제 1) |
+| `code/pose_app.py` | 행동 패턴 서비스 (A3, MQTT 발행, 가동 기록) |
 | `code/pose_model.py` | 관절 특징과 GRU 모델 |
-| `code/pose-service.service` | systemd 서비스 파일 |
+| `code/*.service` | systemd 서비스 파일 |
 
 카메라 비밀번호는 Jetson의 설정 파일에서 읽으며 저장소에 넣지 않는다. 영상과 사진도 넣지 않았다.
