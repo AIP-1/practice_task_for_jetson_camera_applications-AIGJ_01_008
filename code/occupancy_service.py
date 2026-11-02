@@ -75,7 +75,7 @@ class Camera(threading.Thread):
         super().__init__(daemon=True, name=f"cam-{name}")
         self.name, self.spec = name, spec
         self.lock = threading.Lock()
-        self.frame, self.t_frame, self.n = None, 0.0, 0
+        self.frame, self.t_frame, self.t_read, self.n = None, 0.0, 0.0, 0
         self.status, self.reconnects, self.down_since = "연결 중", 0, None
 
     def _open(self):
@@ -120,8 +120,11 @@ class Camera(threading.Thread):
                 cap = None
                 self._down("읽기 실패")
                 continue
+            t = time.time()
+            gap, self.t_read = t - self.t_read, t
             with self.lock:
-                self.frame, self.t_frame = f, time.time()
+                if gap < 2.0:                            # 끊긴 동안 드문드문 오는 프레임은 살아 있는 영상으로 치지 않음
+                    self.frame, self.t_frame = f, t
                 self.n += 1
             if self.down_since is not None:
                 sec = round(time.time() - self.down_since, 1)
