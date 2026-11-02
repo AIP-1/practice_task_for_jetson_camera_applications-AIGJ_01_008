@@ -1,0 +1,16 @@
+[Unit]
+Description=A3 kiosk pose service (pose_app.py)
+After=network-online.target docker.service
+Wants=network-online.target
+
+[Service]
+User=team2-2
+WorkingDirectory=/home/team2-2/eg2-lab
+EnvironmentFile=/home/team2-2/.config/pose.env
+Environment=HF_HUB_OFFLINE=1
+ExecStart=/home/team2-2/eg2/bin/python -u pose_app.py --behavior --mqtt-host 127.0.0.1 --stats-log runs/pose_stats.csv
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target
