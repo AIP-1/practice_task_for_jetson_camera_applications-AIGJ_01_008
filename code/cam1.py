@@ -29,6 +29,7 @@ import time
 from datetime import datetime
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
+from urllib.parse import quote
 
 os.environ.setdefault("OPENCV_FFMPEG_CAPTURE_OPTIONS", "rtsp_transport;tcp")
 import cv2  # noqa: E402
@@ -46,16 +47,22 @@ def open_src(src, w, h, fps):
         cap.set(cv2.CAP_PROP_FRAME_HEIGHT, h)
         cap.set(cv2.CAP_PROP_FPS, fps)
     else:
-        cap = cv2.VideoCapture(str(src), cv2.CAP_FFMPEG)
+        cap = cv2.VideoCapture(vigi_url() if src == "vigi" else str(src), cv2.CAP_FFMPEG)
     if not cap.isOpened():
         cap.release()
         return None
     return cap
 
 
+def vigi_url():
+    """--src vigi: 주소를 환경 변수로 만들어 명령줄과 기록에 비밀번호가 남지 않게 한다"""
+    ip = os.environ.get("VIGI_IP", "10.42.0.111")
+    return f"rtsp://admin:{quote(os.environ['CAM_PW'], safe='')}@{ip}:554/{os.environ.get('VIGI_STREAM', 'stream2')}"
+
+
 def kind(src):
     s = str(src)
-    return "USB 웹캠" if s.isdigit() else ("RTSP" if s.startswith("rtsp") else "파일")
+    return "USB 웹캠" if s.isdigit() else ("RTSP" if s == "vigi" or s.startswith("rtsp") else "파일")
 
 
 class Cpu:
@@ -283,7 +290,7 @@ def main():
     sub = ap.add_subparsers(dest="cmd", required=True)
     for name in ("probe", "lag", "view"):
         p = sub.add_parser(name)
-        p.add_argument("--src", required=True, help="USB 번호(예: 0) 또는 rtsp://... 또는 동영상 파일")
+        p.add_argument("--src", required=True, help="USB 번호(예: 0), vigi(환경 변수 CAM_PW 사용), rtsp://... 또는 동영상 파일")
         p.add_argument("--width", type=int, default=1280)
         p.add_argument("--height", type=int, default=720)
         p.add_argument("--fps", type=int, default=30)
