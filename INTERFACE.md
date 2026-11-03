@@ -20,6 +20,7 @@ AIGJ_01_008 박민수 · 팀 Jetson(team2)에서 가동 중. 다른 팀이 이 �
 | `aiot/kiosk/lab1/event` | A3 | 행동·동작 이벤트 | 일어날 때 즉시 | 아니오 |
 | `aiot/kiosk/lab1/status` | A3 | 처리 상태 | 60초 | 예 |
 | `aiot/kiosk/lab1/summary` | A3 | 최근 구간 집계 | 900초 | 예 |
+| `aiot/vision/test/event` | 선 통과 도구 (시험용) | IN/OUT 1회마다 `ts`, `dir`, `id`, `in`, `out` | 통과할 때 즉시 | 아니오 |
 
 retain 토픽은 새로 구독하면 바로 마지막 값을 받는다.
 
