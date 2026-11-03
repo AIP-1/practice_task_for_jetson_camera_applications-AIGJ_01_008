@@ -51,6 +51,7 @@ EN = {"만세": "BOTH ARMS UP", "한팔들기": "ONE ARM UP", "손흔들기": "W
 BEH_RANK = {"관찰 중": 0, "지나감": 1, "머무름": 2, "힐끗 봄": 3, "관심 있음": 4}
 LE, RE = 7, 8         # COCO 관절: 왼쪽·오른쪽 팔꿈치 (어깨 높이 손 흔들기 판정용)
 FACE_R = 0.5          # 손목이 코에서 어깨 너비의 이 배수 이내면 손들기·흔들기에서 제외
+HS_DIST, HS_LOW, HS_CONF = 1.0, 4.0, 0.3   # 악수: 손목 거리(어깨 너비 배수), 어깨 아래 높이 한계, 손목 신뢰도 (11/3 현장에서 0.5, 2.5, 0.5가 너무 빡빡해 완화)
 
 if args.src == "rtsp" and "CAM_PW" not in os.environ:
     raise SystemExit('CAM_PW가 없음: read -s -p "카메라 관리자 비밀번호: " CAM_PW; echo; export CAM_PW')
@@ -182,12 +183,12 @@ def handshake_pairs(kps, ids, now):
             best = 1e9
             for wa in (LW, RW):
                 for wb in (LW, RW):
-                    if a[wa, 2] > KP_CONF and b[wb, 2] > KP_CONF:
+                    if a[wa, 2] > HS_CONF and b[wb, 2] > HS_CONF:
                         mid_y = (a[wa, 1] + b[wb, 1]) / 2
-                        if ba[0][1] < mid_y < ba[0][1] + 2.5 * ba[1]:
+                        if ba[0][1] < mid_y < ba[0][1] + HS_LOW * ba[1]:
                             best = min(best, np.linalg.norm(a[wa, :2] - b[wb, :2]))
             key = tuple(sorted((ids[i], ids[j])))
-            pairs.setdefault(key, collections.deque(maxlen=60)).append((now, best < 0.5 * sw))
+            pairs.setdefault(key, collections.deque(maxlen=60)).append((now, best < HS_DIST * sw))
             found.add(key)
     return found
 
