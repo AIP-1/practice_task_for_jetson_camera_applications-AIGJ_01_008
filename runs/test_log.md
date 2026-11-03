@@ -40,7 +40,7 @@ AIGJ_01_008 박민수 · 11/3 · 공통 조건: Jetson Orin Nano Super 8GB, JetP
 - 조건: 입력 640, 임의 영상 200회, mAP는 coco128, 전력은 tegrastats 보드 전체
 - 결과: PyTorch yolo11n 29.03 ms(p95 30.47, mAP 0.508), yolo11s 29.97 ms(0.576), TensorRT FP16 yolo11n 전체 11.48 ms(p95 14.87, 87.1 fps, mAP 0.503), 추론만 5.1 ms(coco128 검증)
 - yolo11s FP16 (서비스 끈 상태): 전체 12.95 ms(p95 13.63, 77.2 fps), 추론 6.5 ms, mAP 0.576, 변환 404초
-- INT8: 서비스를 잠시 끄고 coco128 보정으로 변환, 8분 제한 안에 끝나지 않아 멈춤 (최소 남은 메모리 1390 MB)
+- INT8 (서비스 끈 상태, coco128 128장 보정): 전체 9.62 ms(p95 10.27, 104 fps), 추론 3.2 ms, mAP 0.486. FP16 대비 mAP −0.017(약 3.4%)
 - 판정: FP16 추론 기준 10 ms 충족
 
 **T1-2 선 통과**
